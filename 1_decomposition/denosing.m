@@ -66,6 +66,29 @@ for s = 1:length(SNR)
         n_power_after(avg,s) = norm(kron(y1_est,kron(y2_est,y3_est))-y_clean)^2;
 
         bound(avg,s) = noise_var*(length(y1)+length(y2)+length(y3)-3);
+        %% HOSVD: relies on https://tensorlab.net/
+        % since the order of the Kronecker product is 1,2,3, the outer
+        % product is then 3,2,1, which means that the first dimension of
+        % tensor y corresponds to y3, the second to y2, and the third to y1
+        y_tensor = reshape(y,[M3_loc,M2_loc,M1_loc]);
+        y_mode_1 = tens2mat(y_tensor,1);
+        [U,~,~] = svd(y_mode_1);
+        y_3_hosvd = U(:,1);
+
+        y_mode_2 = tens2mat(y_tensor,2);
+        [U,~,~] = svd(y_mode_2);
+        y_2_hosvd = U(:,1);
+
+        y_mode_3 = tens2mat(y_tensor,3);
+        [U,~,~] = svd(y_mode_3);
+        y_1_hosvd = U(:,1);
+        
+        % mode product to seek the core tensor
+        factor = cell(3,1);
+        factor{1} = y_3_hosvd';factor{2} = y_2_hosvd';factor{3} = y_1_hosvd';
+        core = tmprod(y_tensor,factor,[1,2,3]);
+
+        n_power_after_hosvd(avg,s) = norm(core*kron(y_1_hosvd,kron(y_2_hosvd,y_3_hosvd))-y_clean)^2;
     end
 end
 
